@@ -19,6 +19,9 @@
 - The repository now contains a packaged Python CLI scaffold with `wp-alt-text auth-check` and `wp-alt-text discover`.
 - The CLI now also includes `wp-alt-text context-report`, which scans published `posts` and `pages` and maps attachments to likely front-end usage via attachment ID and source URL matching in rendered content.
 - `wp-alt-text context-report` now also fetches public page HTML and matches against both REST-rendered content and front-end markup, which is important for Elementor-heavy pages.
+- The CLI now also includes `wp-alt-text review-report`, which exports the current media/context scan into `review-report.jsonl` and `review-report.csv` for downstream review, suggestion, and apply stages.
+- The CLI now also includes `wp-alt-text prompt-spec`, which exposes the current alt-text decision rules and reusable prompt templates without needing live WordPress access.
+- The CLI now also includes `wp-alt-text suggest`, which reads exported review-report JSONL records, sends image URL plus usage context to the OpenAI Responses API, and writes suggestion-enriched JSONL + CSV artifacts without changing WordPress.
 - The first production-safe mode should be `dry-run` by default.
 - Human review must remain part of the workflow because alt text correctness depends on context and image role.
 - The initial targeting scope now includes both missing alt text and weak existing alt text.
@@ -55,6 +58,10 @@
 - For large media libraries, async batching is desirable to control cost and throughput.
 - Current context mapping heuristics are read-only and conservative: they look for `wp-image-<id>`, attachment-related data attributes/classes, and direct source URL references inside rendered content.
 - Current context mapping heuristics are read-only and conservative: they look for `wp-image-<id>`, attachment-related data attributes/classes, and direct source URL references inside both rendered content and fetched public HTML.
+- The report schema is intentionally forward-compatible: each JSONL record already reserves `suggestion`, `review`, and `apply` sections so later workflow stages can update the same artifact family rather than inventing a new format.
+- Prompting is now versioned via `PROMPT_VERSION`, with an explicit role order of decorative, functional, text-heavy, complex, then informative.
+- The prompt contract expects structured output fields for role, suggested alt text, confidence, manual-review flag, long-description flag, rationale, and warnings.
+- Suggestion generation is now artifact-first rather than live-site-first: it operates on exported `review-report.jsonl` files so discovery/context scans and model generation stay decoupled.
 
 ## Accessibility Notes
 - WCAG 2.2 non-text content requirements apply.
@@ -79,6 +86,9 @@
 - `wp-alt-text context-report --per-page 2 --max-content-pages 1` succeeds and scans published post/page content for likely attachment usage matches.
 - `wp-alt-text discover --per-page 3 --missing-alt-only` succeeds and currently finds missing-alt attachments after scanning forward to later media pages.
 - `wp-alt-text context-report --per-page 1 --missing-alt-only --content-per-page 5 --max-content-pages 1` succeeds and fetches public HTML for scanned content items.
+- `wp-alt-text review-report --per-page 2 --missing-alt-only --content-per-page 5 --max-content-pages 1 --output-dir reports/smoke` succeeds and writes JSONL + CSV review artifacts.
+- `wp-alt-text prompt-spec --json` succeeds locally without WordPress credentials.
+- `wp-alt-text prompt-spec --review-record reports/smoke/review-report.jsonl` succeeds and renders example model messages from an exported review record.
 
 ## Known Unknowns
 - Builder/theme landscape on the target site.

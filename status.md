@@ -13,7 +13,7 @@
 5. Prefer reversible changes, dry runs, and audit logs before any bulk write to WordPress.
 
 ## Current Status
-- Phase: Read-only discovery and context mapping
+- Phase: Read-only discovery, context mapping, review export, prompt design, and suggestion generation
 - Status: In progress
 - Last updated: 2026-03-13
 
@@ -141,6 +141,9 @@
 - 2026-03-13: Fixed paginated `--missing-alt-only` discovery behavior. Result: missing-alt discovery and context reports now scan forward across source media pages until they fill the requested batch or exhaust the endpoint.
 - 2026-03-13: Clarified product-direction open questions with user input. Result: Python is confirmed, the target site is Elementor-based, initial rewrite scope includes missing and weak alt text, and the working deployment default is a local runner.
 - 2026-03-13: Expanded context mapping beyond REST-rendered content. Result: `context-report` now fetches public page HTML and matches media against both rendered content and front-end markup for better Elementor coverage.
+- 2026-03-13: Added a review-first export workflow. Result: new `review-report` command writes JSONL and CSV artifacts that preserve current media/context data plus placeholder suggestion, review, and apply states for later stages.
+- 2026-03-13: Defined prompt and decision rules for alt-text generation. Result: added a reusable prompt module plus `prompt-spec` CLI output covering decorative, functional, informative, text-heavy, and complex image handling.
+- 2026-03-13: Added a read-only suggestion generation stage. Result: new `suggest` command reads exported `review-report.jsonl`, calls the OpenAI Responses API with image URL + context, records structured suggestion results back into the existing report schema, and writes updated JSONL + CSV artifacts without changing WordPress.
 
 ## Resolved Issues
 - Need for persistent session continuity files: resolved by creating `status.md` and `memory.md`.
@@ -153,6 +156,9 @@
 - Need for a first attachment-to-content mapping workflow: partially resolved by adding a read-only context report over rendered post/page content.
 - Paged missing-alt discovery returning empty batches despite later matches: resolved by scan-forward filtering across source media pages.
 - Need to inspect builder-managed front-end markup beyond REST-rendered content: partially resolved by adding public-page HTML fetching to `context-report`.
+- Need for a durable review report format around context data: resolved by adding `review-report` with JSONL + CSV outputs.
+- Need for stable prompt and decision rules before suggestion generation: resolved by adding a versioned ruleset and prompt builder based on W3C/WCAG/Section 508 guidance.
+- Need for a first read-only model suggestion stage: resolved by adding `suggest`, which enriches exported review records via the OpenAI Responses API while preserving the review-first workflow.
 
 ## Open Questions
 - Authentication method available for WordPress: confirmed working via application passwords, with canonical-host resolution required.
@@ -160,16 +166,13 @@
 - How should usage context be gathered for Elementor-generated images and other builder-managed assets?
 
 ## Next Actions
-1. Design a review report format, likely JSONL plus CSV summary, around the new context-report data model.
-2. Define prompt and decision rules for decorative, functional, informative, text-heavy, and complex images.
-3. Add suggestion generation in a read-only mode.
-4. Add explicit approval and apply stages after the review format is stable.
+1. Add explicit approval and apply stages after the review format is stable.
 
 ## Tasks
 - [x] Expand context mapping beyond rendered post/page content into builder-heavy or custom-field-driven image usage where REST-rendered HTML is incomplete.
-- [ ] Design a review report format, likely JSONL plus CSV summary, around the new context-report data model.
-- [ ] Define prompt and decision rules for decorative, functional, informative, text-heavy, and complex images.
-- [ ] Add suggestion generation in a read-only mode.
+- [x] Design a review report format, likely JSONL plus CSV summary, around the new context-report data model.
+- [x] Define prompt and decision rules for decorative, functional, informative, text-heavy, and complex images.
+- [x] Add suggestion generation in a read-only mode.
 - [ ] Add explicit approval and apply stages after the review format is stable.
 
 ## Sources
@@ -180,7 +183,15 @@
 - WP-CLI `wp post meta update`: https://developer.wordpress.org/cli/commands/post/meta/update/
 - WP-CLI commands index: https://developer.wordpress.org/cli/commands/
 - W3C alt decision tree: https://www.w3.org/WAI/tutorials/images/decision-tree/
+- W3C informative images tutorial: https://www.w3.org/WAI/tutorials/images/informative/
+- W3C decorative images tutorial: https://www.w3.org/WAI/tutorials/images/decorative/
+- W3C functional images tutorial: https://www.w3.org/WAI/tutorials/images/functional/
+- W3C images of text tutorial: https://www.w3.org/WAI/tutorials/images/textual/
+- W3C complex images tutorial: https://www.w3.org/WAI/tutorials/images/complex/
 - WCAG 2.2: https://www.w3.org/TR/WCAG22/
 - Section 508 alt text guidance: https://www.section508.gov/create/alternative-text/
 - OpenAI images and vision guide: https://platform.openai.com/docs/guides/images-vision
 - OpenAI Batch API guide: https://platform.openai.com/docs/guides/batch
+- OpenAI Responses API: https://platform.openai.com/docs/api-reference/responses
+- OpenAI image input guide: https://platform.openai.com/docs/guides/images-vision
+- OpenAI structured outputs guide: https://platform.openai.com/docs/guides/structured-outputs

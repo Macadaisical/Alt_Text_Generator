@@ -18,6 +18,12 @@ class Settings:
         return f"{self.wp_site_url.rstrip('/')}/wp-json/wp/v2"
 
 
+@dataclass(frozen=True)
+class OpenAISettings:
+    openai_api_key: str
+    openai_model: str = "gpt-4.1-mini"
+
+
 def load_settings(env_path: Path | None = None) -> Settings:
     root = Path.cwd()
     resolved_env = env_path or (root / ".env")
@@ -44,4 +50,21 @@ def load_settings(env_path: Path | None = None) -> Settings:
         wp_site_url=site_url,
         wp_username=username,
         wp_app_password=app_password,
+    )
+
+
+def load_openai_settings(env_path: Path | None = None) -> OpenAISettings:
+    root = Path.cwd()
+    resolved_env = env_path or (root / ".env")
+    load_dotenv(resolved_env)
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    model = os.getenv("OPENAI_MODEL", "").strip() or "gpt-4.1-mini"
+
+    if not api_key:
+        raise ValueError("Missing required environment variable: OPENAI_API_KEY")
+
+    return OpenAISettings(
+        openai_api_key=api_key,
+        openai_model=model,
     )
