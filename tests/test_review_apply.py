@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from wp_alt_text.apply import apply_reviewed_alt_text
 from wp_alt_text.review import auto_review_high_confidence, is_auto_approvable_suggestion
+from wp_alt_text.review_html import validate_review_records, write_review_html
 
 
 class _StubWordPressClient:
@@ -134,6 +137,45 @@ class ReviewApplyPolicyTests(unittest.TestCase):
         )
         self.assertEqual(records[1]["review"]["status"], "pending")
         self.assertEqual(records[1]["apply"]["status"], "not_attempted")
+
+    def test_review_html_writer_outputs_expected_markup(self) -> None:
+        record = _base_record(
+            attachment_id=1,
+            candidate_type="informative",
+            candidate_alt_text="Exterior of courthouse building.",
+        )
+        record["attachment_title"] = "Courthouse"
+        record["source_url"] = "https://example.com/image.jpg"
+        record["context_summary"] = [
+            {
+                "title": "About",
+                "content_type": "page",
+                "link": "https://example.com/about",
+                "content_source": "rendered_content",
+                "match_reason": "attachment_id",
+            }
+        ]
+
+        with TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "review-report.html"
+            write_review_html(output_path=output_path, report_records=[record])
+            html = output_path.read_text(encoding="utf-8")
+
+        self.assertIn("Review Alt Text", html)
+        self.assertIn("Courthouse", html)
+        self.assertIn("review-report-reviewed.jsonl", html)
+        self.assertIn("wp-alt-text review-import", html)
+
+    def test_review_record_validation_rejects_missing_sections(self) -> None:
+        record = _base_record(
+            attachment_id=1,
+            candidate_type="informative",
+            candidate_alt_text="Exterior of courthouse building.",
+        )
+        del record["review"]
+
+        with self.assertRaises(ValueError):
+            validate_review_records([record])
 
 
 if __name__ == "__main__":

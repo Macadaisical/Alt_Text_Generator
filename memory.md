@@ -25,6 +25,8 @@
 - The CLI now also includes `wp-alt-text review`, which records reviewer `approve`, `edit`, and `skip` decisions into exported review-report JSONL records and writes reviewed JSONL + CSV artifacts without changing WordPress.
 - The CLI now also includes `wp-alt-text apply`, which consumes reviewed artifacts, marks dry-run or applied outcomes in the `apply` section, and only performs live WordPress updates when `--commit` is supplied.
 - The CLI now also supports `wp-alt-text apply --auto-apply-high-confidence`, which auto-approves only narrow eligible suggestions into the normal review/apply audit trail and still defaults to dry-run.
+- The CLI now also includes `wp-alt-text review-html`, which renders exported `review-report.jsonl` artifacts into a local static HTML review app for browser-based review and JSONL export.
+- The CLI now also includes `wp-alt-text review-import`, which validates a browser-exported reviewed JSONL file and rewrites it into a managed JSONL + CSV artifact directory for later apply steps.
 - The first production-safe mode should be `dry-run` by default.
 - Human review must remain part of the workflow because alt text correctness depends on context and image role.
 - The initial targeting scope now includes both missing alt text and weak existing alt text.
@@ -68,6 +70,7 @@
 - Review decisions are also artifact-first: the `review` stage updates the existing `review` section in copied report artifacts so the later apply stage can consume reviewer-approved records without re-scanning WordPress.
 - Apply is dry-run first by default: it only targets records whose review status is `reviewed` and whose action is `approve` or `edit`, and it writes a new artifact family whether or not live updates are committed.
 - Live write verification is now explicit in the client: after a media alt-text update, the tool performs a follow-up read and only treats the apply as successful if the confirmed `alt_text` matches the requested value.
+- This site can return stale `alt_text` values immediately after a successful update; the client now retries read-after-write verification briefly before marking an apply as failed.
 - Manual-review policy is enforced in code, not left to the model alone: `decorative`, `functional`, `text_heavy`, and `complex` suggestions are always marked `requires_manual_review`.
 - Auto-approval policy is intentionally narrow: only high-confidence `informative` suggestions with no warnings, no manual-review requirement, no long-description requirement, and non-empty candidate alt text are eligible.
 - The intended write-back behavior is selective, not bulk by default: only reviewer-approved records should be applied to WordPress.
@@ -104,6 +107,8 @@
 - `wp-alt-text apply --input-report reports/review-smoke/review-report.jsonl --output-dir reports/apply-smoke --attachment-ids 11111` succeeds locally in dry-run mode and writes post-apply JSONL + CSV artifacts.
 - `python3 -m unittest discover -s tests -v` succeeds locally and currently covers auto-review and dry-run apply policy behavior.
 - `wp-alt-text apply --input-report reports/suggested/review-report.jsonl --output-dir reports/live-commit-trial --attachment-ids 10969 10973 --auto-apply-high-confidence --commit` succeeded against the live site, and follow-up reads confirmed the expected alt text values on attachment IDs `10969` and `10973`.
+- `wp-alt-text review-html --input-report reports/suggested/review-report.jsonl --output-path reports/review-ui/review-report.html` succeeds locally and writes a browser-openable review app for the current artifact set.
+- `wp-alt-text review-import --input-report reports/review-ui/review-report-reviewed.jsonl --output-dir reports/reviewed-import-smoke` succeeds locally and rewrites normalized JSONL + CSV reviewed artifacts.
 
 ## Known Unknowns
 - Builder/theme landscape on the target site.

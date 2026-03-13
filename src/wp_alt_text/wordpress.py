@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass
 from html import unescape
 from typing import Any
@@ -152,13 +153,20 @@ class WordPressClient:
             f"media/{attachment_id}",
             json={"alt_text": alt_text},
         )
-        payload = self._request(
-            "GET",
-            f"media/{attachment_id}",
-            params={"_fields": "id,alt_text,modified"},
-        ).json()
-        confirmed_alt_text = (payload.get("alt_text") or "").strip()
-        if confirmed_alt_text != requested_alt_text:
+        payload = {}
+        confirmed_alt_text = ""
+        for attempt in range(5):
+            payload = self._request(
+                "GET",
+                f"media/{attachment_id}",
+                params={"_fields": "id,alt_text,modified"},
+            ).json()
+            confirmed_alt_text = (payload.get("alt_text") or "").strip()
+            if confirmed_alt_text == requested_alt_text:
+                break
+            if attempt < 4:
+                time.sleep(0.5)
+        else:
             raise WordPressError(
                 "Verified alt_text does not match requested value for "
                 f"attachment {attachment_id}: requested={requested_alt_text!r} "

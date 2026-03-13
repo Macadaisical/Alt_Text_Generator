@@ -11,6 +11,7 @@ from .config import load_openai_settings, load_settings
 from .prompting import build_suggestion_messages, build_system_prompt, prompt_spec
 from .reporting import build_review_report_records, write_review_report
 from .review import AUTO_APPROVE_CANDIDATE_TYPES, ReviewError, apply_review_action
+from .review_html import validate_review_records, write_review_html
 from .suggestion import SuggestionClient, apply_suggestions
 from .wordpress import WordPressClient, WordPressError
 
@@ -262,6 +263,40 @@ def build_parser() -> argparse.ArgumentParser:
         help="Replace existing reviewed records instead of skipping them.",
     )
 
+    review_html_parser = subparsers.add_parser(
+        "review-html",
+        help="Generate a local HTML review app from a review-report JSONL artifact.",
+    )
+    review_html_parser.add_argument(
+        "--input-report",
+        type=Path,
+        default=Path("reports/suggested/review-report.jsonl"),
+        help="Path to the input review-report JSONL file.",
+    )
+    review_html_parser.add_argument(
+        "--output-path",
+        type=Path,
+        default=Path("reports/review-ui/review-report.html"),
+        help="Path to the output HTML file.",
+    )
+
+    review_import_parser = subparsers.add_parser(
+        "review-import",
+        help="Import a browser-edited reviewed JSONL file and regenerate managed artifacts.",
+    )
+    review_import_parser.add_argument(
+        "--input-report",
+        type=Path,
+        default=Path("review-report-reviewed.jsonl"),
+        help="Path to the reviewed JSONL file exported from the local HTML review app.",
+    )
+    review_import_parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("reports/reviewed"),
+        help="Directory where normalized reviewed JSONL and CSV artifacts will be written.",
+    )
+
     apply_parser = subparsers.add_parser(
         "apply",
         help="Write reviewer-approved alt text back to WordPress, dry-run by default.",
@@ -405,6 +440,35 @@ def main() -> int:
         except ReviewError as exc:
             print(f"Review error: {exc}", file=sys.stderr)
             return 2
+        except Exception as exc:
+            print(f"Unexpected error: {exc}", file=sys.stderr)
+            return 1
+
+    if args.command == "review-html":
+        try:
+            review_records = _read_jsonl_records(args.input_report)
+            output_path = write_review_html(
+                output_path=args.output_path,
+                report_records=review_records,
+            )
+            print(f"Wrote HTML review app for {len(review_records)} record(s).")
+            print(f"HTML: {output_path}")
+            return 0
+        except Exception as exc:
+            print(f"Unexpected error: {exc}", file=sys.stderr)
+            return 1
+
+    if args.command == "review-import":
+        try:
+            review_records = validate_review_records(_read_jsonl_records(args.input_report))
+            write_meta = write_review_report(
+                output_dir=args.output_dir,
+                report_records=review_records,
+            )
+            print(f"Imported {write_meta['record_count']} reviewed record(s).")
+            print(f"JSONL: {write_meta['jsonl_path']}")
+            print(f"CSV: {write_meta['csv_path']}")
+            return 0
         except Exception as exc:
             print(f"Unexpected error: {exc}", file=sys.stderr)
             return 1

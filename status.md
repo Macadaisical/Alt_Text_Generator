@@ -13,7 +13,7 @@
 5. Prefer reversible changes, dry runs, and audit logs before any bulk write to WordPress.
 
 ## Current Status
-- Phase: Discovery, review export, suggestion generation, approval workflow, apply, and verification hardening
+- Phase: Discovery, review export, suggestion generation, review UX, apply, and verification hardening
 - Status: In progress
 - Last updated: 2026-03-13
 
@@ -149,6 +149,9 @@
 - 2026-03-13: Enforced manual-review defaults for higher-risk suggestion types. Result: suggestion generation now forces `requires_manual_review` true for `decorative`, `functional`, `text_heavy`, and `complex` candidate types regardless of model self-assessment.
 - 2026-03-13: Added an explicit opt-in automation path. Result: `apply --auto-apply-high-confidence` now auto-approves only strict eligible suggestions into the normal review/apply audit trail and remains dry-run by default unless `--commit` is supplied.
 - 2026-03-13: Added local policy tests and completed a controlled live write trial. Result: `python3 -m unittest discover -s tests -v` now covers auto-review/apply policy paths, the WordPress client verifies alt-text writes with a follow-up read, and attachment IDs `10969` and `10973` were successfully updated on the live site with verified read-back.
+- 2026-03-13: Added a local HTML review surface. Result: new `review-html` command generates a static browser-based review app from `review-report.jsonl` artifacts, allowing reviewers to inspect images/context, filter records, edit decisions inline, and export reviewed JSONL without using raw CLI commands for each record.
+- 2026-03-13: Closed the browser review round-trip. Result: new `review-import` command validates browser-exported reviewed JSONL files and rewrites them into managed JSONL + CSV artifacts for the apply stage.
+- 2026-03-13: Investigated false apply failures after a live commit batch. Result: the site had accepted all 11 requested alt-text updates, but immediate verification reads were stale; the WordPress client now retries read-after-write verification before marking an apply as failed.
 
 ## Resolved Issues
 - Need for persistent session continuity files: resolved by creating `status.md` and `memory.md`.
@@ -169,6 +172,8 @@
 - Need to keep higher-risk suggestion types in the manual-review path by default: resolved by enforcing policy-gated manual review in the suggestion stage for `decorative`, `functional`, `text_heavy`, and `complex` outputs.
 - Need for an opt-in automation path after explicit review/apply workflow stabilization: resolved by adding `--auto-apply-high-confidence` with narrow eligibility rules and preserved audit updates.
 - Need for stronger confidence in live write-back correctness: resolved by adding local tests for review/apply policy behavior and a read-after-write verification step in the WordPress client.
+- Need for a more usable local review experience than raw JSONL/CLI edits: resolved by adding `review-html` as a static browser-based reviewer over exported artifacts.
+- Need to bring browser-reviewed artifacts back into the managed workflow cleanly: resolved by adding `review-import` to validate and normalize browser-exported reviewed JSONL files.
 
 ## Open Questions
 - Authentication method available for WordPress: confirmed working via application passwords, with canonical-host resolution required.
@@ -178,7 +183,7 @@
 
 ## Next Actions
 1. Expand automated test coverage beyond policy logic into CLI integration and WordPress client behavior.
-2. Decide whether the next milestone is review UX, deployment packaging, or broader live-site rollout controls.
+2. Decide whether the next review UX improvement should focus on in-browser CSV export, richer filtering, or a direct local save path.
 
 ## Tasks
 - [x] Expand context mapping beyond rendered post/page content into builder-heavy or custom-field-driven image usage where REST-rendered HTML is incomplete.

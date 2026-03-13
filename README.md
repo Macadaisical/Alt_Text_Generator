@@ -79,6 +79,22 @@ wp-alt-text review --input-report reports/suggested/review-report.jsonl --attach
 
 Use `--action edit --final-alt-text "..."` to override the model suggestion, or `--action skip` to mark a record as intentionally not approved for apply.
 
+Generate a browser-based local review app from an exported report:
+
+```bash
+wp-alt-text review-html --input-report reports/suggested/review-report.jsonl --output-path reports/review-ui/review-report.html
+```
+
+`review-html` writes a static HTML file you can open locally to review image previews, inspect context, filter records, set approve/edit/skip decisions inline, and export an updated reviewed JSONL artifact for the next stage.
+
+Import the browser-exported reviewed JSONL back into a managed artifact directory:
+
+```bash
+wp-alt-text review-import --input-report /path/to/review-report-reviewed.jsonl --output-dir reports/reviewed
+```
+
+`review-import` validates the reviewed JSONL structure, rewrites it as the canonical `review-report.jsonl`, and regenerates the matching CSV summary so the next `apply` step can use a normal managed artifact directory again.
+
 Dry-run reviewer-approved writes back to WordPress:
 
 ```bash
@@ -114,6 +130,8 @@ The CLI loads credentials from the repo-root `.env` file and currently expects:
 - `prompt-spec`: local inspection of alt-text role rules and prompt templates
 - `suggest`: read-only model-backed suggestion generation against exported review reports
 - `review`: records reviewer decisions such as approve, edit, and skip into a new artifact set
+- `review-html`: generates a local browser-based review app from a review-report JSONL artifact
+- `review-import`: imports a browser-edited reviewed JSONL file back into a managed JSONL + CSV artifact directory
 - `apply`: dry-run-first write-back stage for reviewed approved/edit records
 
 Live write-back is intentionally gated behind `wp-alt-text apply --commit`.
