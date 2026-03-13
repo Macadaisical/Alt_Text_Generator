@@ -38,6 +38,7 @@
 ## Technical Notes
 - `.env` already contains `WP_SITE_URL`, `WP_USERNAME`, `WP_APP_PASSWORD`, and FTP credentials.
 - `assets/upload_via_ftp.py` already uses `python-dotenv` and a repo-root `.env`, which should be mirrored by the alt-text tool for consistency.
+- GitHub remote `origin` points to `https://github.com/Macadaisical/Alt_Text_Generator.git`, and the local branch now tracks `origin/main`.
 - The configured `WP_SITE_URL` uses `www`, but the site canonicalizes to the non-`www` host. Authenticated REST calls must resolve the canonical REST root first or Basic Auth may be lost across the redirect.
 - The media endpoint on this site is safer when discovery requests use `_fields` to limit the response payload to only required fields.
 - WordPress REST API media endpoint includes `alt_text` and supports update operations.

@@ -135,6 +135,7 @@
 - 2026-03-12: Investigated early REST failures. Result: the configured `www` host redirects to the canonical non-`www` host, which caused auth loss during redirects; client now resolves the canonical REST root before authenticated requests.
 - 2026-03-12: Investigated media endpoint instability. Result: broad media responses were failing site-side; restricting discovery to required `_fields` made the endpoint reliable for current discovery use.
 - 2026-03-13: Prepared repository for first GitHub push. Result: added `.gitignore` to exclude secrets and local build artifacts.
+- 2026-03-13: Created the initial git commit and pushed to GitHub. Result: repository is now tracking `origin/main`.
 
 ## Resolved Issues
 - Need for persistent session continuity files: resolved by creating `status.md` and `memory.md`.
@@ -143,6 +144,7 @@
 - Live WordPress REST authentication: resolved by validating read-only authenticated access with the existing credentials.
 - Redirect-related auth failure: resolved in the CLI by resolving the canonical REST base URL before authenticated calls.
 - Media discovery endpoint reliability: partially resolved by requesting only the fields needed for discovery.
+- Initial repository publishing: resolved by creating the first commit and pushing it to GitHub.
 
 ## Open Questions
 - Target hosting environment: local runner, CI, or server near WordPress?
