@@ -1,0 +1,22 @@
+[project]
+name = "wordpress-alt-text-generator"
+version = "0.1.0"
+description = "CLI tooling to discover WordPress media and prepare alt-text workflows."
+requires-python = ">=3.11"
+dependencies = [
+  "python-dotenv>=1.0.1,<2",
+  "requests>=2.32.0,<3",
+]
+
+[project.scripts]
+wp-alt-text = "wp_alt_text.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
