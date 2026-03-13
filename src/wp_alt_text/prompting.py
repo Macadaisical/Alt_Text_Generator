@@ -5,6 +5,12 @@ from dataclasses import dataclass
 from typing import Any
 
 PROMPT_VERSION = "2026-03-13"
+MANUAL_REVIEW_CANDIDATE_TYPES: tuple[str, ...] = (
+    "decorative",
+    "functional",
+    "text_heavy",
+    "complex",
+)
 
 
 @dataclass(frozen=True)
@@ -129,6 +135,7 @@ def prompt_spec() -> dict[str, Any]:
     return {
         "prompt_version": PROMPT_VERSION,
         "decision_priority": list(DECISION_PRIORITY),
+        "manual_review_candidate_types": list(MANUAL_REVIEW_CANDIDATE_TYPES),
         "style_rules": list(STYLE_RULES),
         "role_rules": [
             {
@@ -163,6 +170,9 @@ def build_system_prompt() -> str:
         f"{_format_role_rules()}\n\n"
         "Return valid JSON only with this schema:\n"
         f"{json.dumps(OUTPUT_SCHEMA, ensure_ascii=True, indent=2)}\n\n"
+        "Policy overrides:\n"
+        f"- Always set requires_manual_review true for candidate_type values in "
+        f"{', '.join(MANUAL_REVIEW_CANDIDATE_TYPES)}.\n\n"
         "Never invent page facts that are not supported by the image or the provided context. "
         "When uncertain, lower confidence, add warnings, and require manual review."
     )

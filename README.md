@@ -69,6 +69,32 @@ wp-alt-text suggest --input-report reports/latest/review-report.jsonl --output-d
 
 The `suggest` command sends each review record's context plus the image URL to the OpenAI Responses API, records the model output back into the existing `suggestion` section, and writes a new JSONL + CSV artifact family without changing WordPress data.
 
+High-risk suggestion types are policy-gated for manual review even if the model returns high confidence. The current manual-review defaults are `decorative`, `functional`, `text_heavy`, and `complex`.
+
+Record reviewer decisions into a new reviewed artifact set:
+
+```bash
+wp-alt-text review --input-report reports/suggested/review-report.jsonl --attachment-ids 11111 --action approve --reviewer "TJ"
+```
+
+Use `--action edit --final-alt-text "..."` to override the model suggestion, or `--action skip` to mark a record as intentionally not approved for apply.
+
+Dry-run reviewer-approved writes back to WordPress:
+
+```bash
+wp-alt-text apply --input-report reports/reviewed/review-report.jsonl --all-approved
+```
+
+`apply` only targets records already marked `reviewed` with action `approve` or `edit`. It runs in dry-run mode by default and writes a new artifact set showing intended apply status and target alt text. Use `--commit` to perform live WordPress updates.
+
+There is also an explicit opt-in automation path:
+
+```bash
+wp-alt-text apply --input-report reports/suggested/review-report.jsonl --auto-apply-high-confidence
+```
+
+That path still runs dry-run by default. It first auto-approves only eligible high-confidence suggestions, then feeds them through the normal apply stage and audit fields. Current policy keeps this narrow: only `informative` suggestions are auto-approvable, and only when they are high confidence, have no warnings, do not require manual review, do not need a long description, and have non-empty candidate alt text.
+
 ## Configuration
 
 The CLI loads credentials from the repo-root `.env` file and currently expects:
@@ -87,5 +113,7 @@ The CLI loads credentials from the repo-root `.env` file and currently expects:
 - `review-report`: read-only JSONL and CSV export for human review workflows
 - `prompt-spec`: local inspection of alt-text role rules and prompt templates
 - `suggest`: read-only model-backed suggestion generation against exported review reports
+- `review`: records reviewer decisions such as approve, edit, and skip into a new artifact set
+- `apply`: dry-run-first write-back stage for reviewed approved/edit records
 
-Write-back is intentionally not implemented yet.
+Live write-back is intentionally gated behind `wp-alt-text apply --commit`.

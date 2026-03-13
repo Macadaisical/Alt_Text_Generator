@@ -145,6 +145,31 @@ class WordPressClient:
             "roles": payload.get("roles", []),
         }
 
+    def update_media_alt_text(self, *, attachment_id: int, alt_text: str) -> dict[str, Any]:
+        requested_alt_text = alt_text.strip()
+        self._request(
+            "POST",
+            f"media/{attachment_id}",
+            json={"alt_text": alt_text},
+        )
+        payload = self._request(
+            "GET",
+            f"media/{attachment_id}",
+            params={"_fields": "id,alt_text,modified"},
+        ).json()
+        confirmed_alt_text = (payload.get("alt_text") or "").strip()
+        if confirmed_alt_text != requested_alt_text:
+            raise WordPressError(
+                "Verified alt_text does not match requested value for "
+                f"attachment {attachment_id}: requested={requested_alt_text!r} "
+                f"confirmed={confirmed_alt_text!r}"
+            )
+        return {
+            "attachment_id": payload.get("id", attachment_id),
+            "alt_text": confirmed_alt_text,
+            "modified": payload.get("modified") or "",
+        }
+
     def list_media(
         self,
         *,

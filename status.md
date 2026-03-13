@@ -13,7 +13,7 @@
 5. Prefer reversible changes, dry runs, and audit logs before any bulk write to WordPress.
 
 ## Current Status
-- Phase: Read-only discovery, context mapping, review export, prompt design, and suggestion generation
+- Phase: Discovery, review export, suggestion generation, approval workflow, apply, and verification hardening
 - Status: In progress
 - Last updated: 2026-03-13
 
@@ -144,6 +144,11 @@
 - 2026-03-13: Added a review-first export workflow. Result: new `review-report` command writes JSONL and CSV artifacts that preserve current media/context data plus placeholder suggestion, review, and apply states for later stages.
 - 2026-03-13: Defined prompt and decision rules for alt-text generation. Result: added a reusable prompt module plus `prompt-spec` CLI output covering decorative, functional, informative, text-heavy, and complex image handling.
 - 2026-03-13: Added a read-only suggestion generation stage. Result: new `suggest` command reads exported `review-report.jsonl`, calls the OpenAI Responses API with image URL + context, records structured suggestion results back into the existing report schema, and writes updated JSONL + CSV artifacts without changing WordPress.
+- 2026-03-13: Added an approval workflow stage. Result: new `review` command records reviewer `approve`, `edit`, and `skip` decisions into the existing report schema and writes a new reviewed JSONL + CSV artifact family for the later apply stage.
+- 2026-03-13: Added an apply stage. Result: new `apply` command reads reviewed artifacts, targets only `reviewed` records with `approve` or `edit`, records dry-run/apply outcomes into the existing schema, and can perform live WordPress updates only when `--commit` is supplied.
+- 2026-03-13: Enforced manual-review defaults for higher-risk suggestion types. Result: suggestion generation now forces `requires_manual_review` true for `decorative`, `functional`, `text_heavy`, and `complex` candidate types regardless of model self-assessment.
+- 2026-03-13: Added an explicit opt-in automation path. Result: `apply --auto-apply-high-confidence` now auto-approves only strict eligible suggestions into the normal review/apply audit trail and remains dry-run by default unless `--commit` is supplied.
+- 2026-03-13: Added local policy tests and completed a controlled live write trial. Result: `python3 -m unittest discover -s tests -v` now covers auto-review/apply policy paths, the WordPress client verifies alt-text writes with a follow-up read, and attachment IDs `10969` and `10973` were successfully updated on the live site with verified read-back.
 
 ## Resolved Issues
 - Need for persistent session continuity files: resolved by creating `status.md` and `memory.md`.
@@ -159,21 +164,31 @@
 - Need for a durable review report format around context data: resolved by adding `review-report` with JSONL + CSV outputs.
 - Need for stable prompt and decision rules before suggestion generation: resolved by adding a versioned ruleset and prompt builder based on W3C/WCAG/Section 508 guidance.
 - Need for a first read-only model suggestion stage: resolved by adding `suggest`, which enriches exported review records via the OpenAI Responses API while preserving the review-first workflow.
+- Need for an explicit approval step in the exported workflow: resolved by adding `review`, which updates review metadata and final alt text decisions in copied report artifacts.
+- Need for a selective write-back stage after review: resolved by adding `apply`, which defaults to dry-run and only writes reviewer-approved records when `--commit` is used.
+- Need to keep higher-risk suggestion types in the manual-review path by default: resolved by enforcing policy-gated manual review in the suggestion stage for `decorative`, `functional`, `text_heavy`, and `complex` outputs.
+- Need for an opt-in automation path after explicit review/apply workflow stabilization: resolved by adding `--auto-apply-high-confidence` with narrow eligibility rules and preserved audit updates.
+- Need for stronger confidence in live write-back correctness: resolved by adding local tests for review/apply policy behavior and a read-after-write verification step in the WordPress client.
 
 ## Open Questions
 - Authentication method available for WordPress: confirmed working via application passwords, with canonical-host resolution required.
 - Hosting path after the first local-runner milestone: keep local-only, move to CI, or move closer to WordPress?
 - How should usage context be gathered for Elementor-generated images and other builder-managed assets?
+- Should the next milestone focus on a more reviewer-friendly interface, broader automated test coverage, or packaging/deployment polish?
 
 ## Next Actions
-1. Add explicit approval and apply stages after the review format is stable.
+1. Expand automated test coverage beyond policy logic into CLI integration and WordPress client behavior.
+2. Decide whether the next milestone is review UX, deployment packaging, or broader live-site rollout controls.
 
 ## Tasks
 - [x] Expand context mapping beyond rendered post/page content into builder-heavy or custom-field-driven image usage where REST-rendered HTML is incomplete.
 - [x] Design a review report format, likely JSONL plus CSV summary, around the new context-report data model.
 - [x] Define prompt and decision rules for decorative, functional, informative, text-heavy, and complex images.
 - [x] Add suggestion generation in a read-only mode.
-- [ ] Add explicit approval and apply stages after the review format is stable.
+- [x] Add an approval workflow that records reviewer decisions such as approve, edit, and skip.
+- [x] Add an apply stage that writes only reviewer-approved alt text back to WordPress.
+- [x] Keep decorative, functional, text-heavy, and complex suggestions in the manual-review path by default.
+- [x] Add an opt-in `--auto-apply-high-confidence` style path only after the explicit approval/apply workflow is stable.
 
 ## Sources
 - WordPress REST API media reference: https://developer.wordpress.org/rest-api/reference/media/

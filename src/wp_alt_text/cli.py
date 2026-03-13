@@ -6,9 +6,11 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
+from .apply import ApplyError, apply_reviewed_alt_text
 from .config import load_openai_settings, load_settings
 from .prompting import build_suggestion_messages, build_system_prompt, prompt_spec
 from .reporting import build_review_report_records, write_review_report
+from .review import AUTO_APPROVE_CANDIDATE_TYPES, ReviewError, apply_review_action
 from .suggestion import SuggestionClient, apply_suggestions
 from .wordpress import WordPressClient, WordPressError
 
@@ -207,6 +209,105 @@ def build_parser() -> argparse.ArgumentParser:
         help="Regenerate suggestions even if a record already has generated suggestion data.",
     )
 
+    review_action_parser = subparsers.add_parser(
+        "review",
+        help="Record reviewer approval decisions into a new review-report artifact set.",
+    )
+    review_action_parser.add_argument(
+        "--input-report",
+        type=Path,
+        default=Path("reports/suggested/review-report.jsonl"),
+        help="Path to the input review-report JSONL file.",
+    )
+    review_action_parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("reports/reviewed"),
+        help="Directory where reviewed JSONL and CSV artifacts will be written.",
+    )
+    review_action_parser.add_argument(
+        "--action",
+        required=True,
+        choices=["approve", "edit", "skip"],
+        help="Reviewer action to record.",
+    )
+    review_action_parser.add_argument(
+        "--attachment-ids",
+        nargs="+",
+        type=int,
+        help="One or more attachment IDs to update.",
+    )
+    review_action_parser.add_argument(
+        "--all-records",
+        action="store_true",
+        help="Apply the review action to every record in the input report.",
+    )
+    review_action_parser.add_argument(
+        "--final-alt-text",
+        help="Explicit final alt text. Required for --action edit. Optional override for approve.",
+    )
+    review_action_parser.add_argument(
+        "--reviewer",
+        default="",
+        help="Optional reviewer name recorded in the review metadata.",
+    )
+    review_action_parser.add_argument(
+        "--notes",
+        default="",
+        help="Optional review notes recorded in the review metadata.",
+    )
+    review_action_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace existing reviewed records instead of skipping them.",
+    )
+
+    apply_parser = subparsers.add_parser(
+        "apply",
+        help="Write reviewer-approved alt text back to WordPress, dry-run by default.",
+    )
+    apply_parser.add_argument(
+        "--input-report",
+        type=Path,
+        default=Path("reports/reviewed/review-report.jsonl"),
+        help="Path to the input review-report JSONL file.",
+    )
+    apply_parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("reports/applied"),
+        help="Directory where post-apply JSONL and CSV artifacts will be written.",
+    )
+    apply_parser.add_argument(
+        "--attachment-ids",
+        nargs="+",
+        type=int,
+        help="One or more reviewed attachment IDs to target.",
+    )
+    apply_parser.add_argument(
+        "--all-approved",
+        action="store_true",
+        help="Target every reviewed record whose action is approve or edit.",
+    )
+    apply_parser.add_argument(
+        "--auto-apply-high-confidence",
+        action="store_true",
+        help=(
+            "Auto-approve and target eligible high-confidence suggestions. "
+            f"Current policy only auto-approves: {', '.join(AUTO_APPROVE_CANDIDATE_TYPES)}."
+        ),
+    )
+    apply_parser.add_argument(
+        "--commit",
+        action="store_true",
+        help="Perform live WordPress updates. Without this flag, apply runs in dry-run mode.",
+    )
+    apply_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Re-run records already marked applied instead of skipping them.",
+    )
+
     return parser
 
 
@@ -269,6 +370,41 @@ def main() -> int:
             )
             print(f"Model: {args.model or settings.openai_model}")
             return 0
+        except Exception as exc:
+            print(f"Unexpected error: {exc}", file=sys.stderr)
+            return 1
+
+    if args.command == "review":
+        try:
+            review_records = _read_jsonl_records(args.input_report)
+            run_meta = apply_review_action(
+                review_records=review_records,
+                action=args.action,
+                attachment_ids=args.attachment_ids,
+                all_records=args.all_records,
+                reviewer=args.reviewer,
+                notes=args.notes,
+                final_alt_text=args.final_alt_text,
+                overwrite=args.overwrite,
+            )
+            write_meta = write_review_report(
+                output_dir=args.output_dir,
+                report_records=review_records,
+            )
+            print(
+                f"Wrote {write_meta['record_count']} reviewed record(s) to "
+                f"{write_meta['output_dir']}."
+            )
+            print(f"JSONL: {write_meta['jsonl_path']}")
+            print(f"CSV: {write_meta['csv_path']}")
+            print(
+                f"Action {run_meta['action']} targeted {run_meta['targeted']} record(s), "
+                f"updated {run_meta['updated']}, skipped {run_meta['skipped']}."
+            )
+            return 0
+        except ReviewError as exc:
+            print(f"Review error: {exc}", file=sys.stderr)
+            return 2
         except Exception as exc:
             print(f"Unexpected error: {exc}", file=sys.stderr)
             return 1
@@ -447,7 +583,48 @@ def main() -> int:
                 )
             return 0
 
+        if args.command == "apply":
+            review_records = _read_jsonl_records(args.input_report)
+            run_meta = apply_reviewed_alt_text(
+                review_records=review_records,
+                wordpress_client=client,
+                attachment_ids=args.attachment_ids,
+                all_approved=args.all_approved,
+                auto_apply_high_confidence=args.auto_apply_high_confidence,
+                dry_run=not args.commit,
+                overwrite=args.overwrite,
+            )
+            write_meta = write_review_report(
+                output_dir=args.output_dir,
+                report_records=review_records,
+            )
+
+            print(f"Site: {settings.wp_site_url}")
+            print(
+                f"Wrote {write_meta['record_count']} post-apply record(s) to "
+                f"{write_meta['output_dir']}."
+            )
+            print(f"JSONL: {write_meta['jsonl_path']}")
+            print(f"CSV: {write_meta['csv_path']}")
+            mode = "commit" if args.commit else "dry-run"
+            print(
+                f"Apply mode {mode} targeted {run_meta['targeted']} record(s), "
+                f"applied {run_meta['applied']}, dry-run marked {run_meta['dry_run']}, "
+                f"skipped {run_meta['skipped']}, failed {run_meta['failed']}."
+            )
+            if args.auto_apply_high_confidence:
+                print(
+                    "Auto-review eligible high-confidence records: "
+                    f"targeted {run_meta['auto_review_targeted']}, "
+                    f"reviewed {run_meta['auto_reviewed']}, "
+                    f"skipped {run_meta['auto_review_skipped']}."
+                )
+            return 0
+
         parser.error(f"Unsupported command: {args.command}")
+        return 2
+    except ApplyError as exc:
+        print(f"Apply error: {exc}", file=sys.stderr)
         return 2
     except WordPressError as exc:
         print(f"WordPress API error: {exc}", file=sys.stderr)

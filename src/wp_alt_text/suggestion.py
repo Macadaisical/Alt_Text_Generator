@@ -8,7 +8,12 @@ from openai import OpenAIError
 from pydantic import BaseModel, Field
 
 from .config import OpenAISettings
-from .prompting import PROMPT_VERSION, build_system_prompt, build_user_prompt
+from .prompting import (
+    MANUAL_REVIEW_CANDIDATE_TYPES,
+    PROMPT_VERSION,
+    build_system_prompt,
+    build_user_prompt,
+)
 
 
 class SuggestionError(RuntimeError):
@@ -78,14 +83,25 @@ class SuggestionClient:
             raise SuggestionError("Model returned no parsed suggestion payload")
 
         generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        warnings = list(parsed.warnings)
+        requires_manual_review = parsed.requires_manual_review
+        if parsed.candidate_type in MANUAL_REVIEW_CANDIDATE_TYPES:
+            requires_manual_review = True
+            policy_warning = (
+                "Manual review required by policy for "
+                f"{parsed.candidate_type} suggestions."
+            )
+            if policy_warning not in warnings:
+                warnings.append(policy_warning)
+
         return {
             "status": "generated",
             "candidate_alt_text": parsed.suggested_alt_text,
             "candidate_type": parsed.candidate_type,
             "confidence": parsed.confidence,
             "rationale": parsed.reasoning_summary,
-            "warnings": parsed.warnings,
-            "requires_manual_review": parsed.requires_manual_review,
+            "warnings": warnings,
+            "requires_manual_review": requires_manual_review,
             "long_description_needed": parsed.long_description_needed,
             "model": response.model,
             "prompt_version": PROMPT_VERSION,

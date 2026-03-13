@@ -65,6 +65,7 @@ def build_review_report_records(
                 },
                 "apply": {
                     "status": "not_attempted",
+                    "target_alt_text": "",
                     "applied_at": "",
                     "error": "",
                 },
@@ -150,8 +151,14 @@ def _csv_fieldnames() -> list[str]:
         "suggestion_error",
         "review_status",
         "review_action",
+        "reviewer",
+        "reviewed_at",
+        "review_notes",
         "final_alt_text",
         "apply_status",
+        "applied_at",
+        "apply_target_alt_text",
+        "apply_error",
     ]
 
 
@@ -187,6 +194,12 @@ def _flatten_record_for_csv(record: dict[str, Any]) -> dict[str, Any]:
         "suggestion_error": suggestion.get("error", ""),
         "review_status": review.get("status", ""),
         "review_action": review.get("action", ""),
+        "reviewer": review.get("reviewer", ""),
+        "reviewed_at": review.get("reviewed_at", ""),
+        "review_notes": review.get("notes", ""),
         "final_alt_text": review.get("final_alt_text", ""),
         "apply_status": apply_state.get("status", ""),
+        "applied_at": apply_state.get("applied_at", ""),
+        "apply_target_alt_text": apply_state.get("target_alt_text", ""),
+        "apply_error": apply_state.get("error", ""),
     }
