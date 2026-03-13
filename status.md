@@ -13,7 +13,7 @@
 5. Prefer reversible changes, dry runs, and audit logs before any bulk write to WordPress.
 
 ## Current Status
-- Phase: Initial scaffold and integration validation
+- Phase: Read-only discovery and context mapping
 - Status: In progress
 - Last updated: 2026-03-13
 
@@ -136,6 +136,11 @@
 - 2026-03-12: Investigated media endpoint instability. Result: broad media responses were failing site-side; restricting discovery to required `_fields` made the endpoint reliable for current discovery use.
 - 2026-03-13: Prepared repository for first GitHub push. Result: added `.gitignore` to exclude secrets and local build artifacts.
 - 2026-03-13: Created the initial git commit and pushed to GitHub. Result: repository is now tracking `origin/main`.
+- 2026-03-13: Added a read-only `context-report` CLI command. Result: the tool can now scan published `posts` and `pages` and report likely attachment usage matches using attachment ID and source URL heuristics.
+- 2026-03-13: Ran live validation for `context-report` against the configured site. Result: command works against production data and scanned 54 published content items with `--max-content-pages 1`.
+- 2026-03-13: Fixed paginated `--missing-alt-only` discovery behavior. Result: missing-alt discovery and context reports now scan forward across source media pages until they fill the requested batch or exhaust the endpoint.
+- 2026-03-13: Clarified product-direction open questions with user input. Result: Python is confirmed, the target site is Elementor-based, initial rewrite scope includes missing and weak alt text, and the working deployment default is a local runner.
+- 2026-03-13: Expanded context mapping beyond REST-rendered content. Result: `context-report` now fetches public page HTML and matches media against both rendered content and front-end markup for better Elementor coverage.
 
 ## Resolved Issues
 - Need for persistent session continuity files: resolved by creating `status.md` and `memory.md`.
@@ -145,21 +150,27 @@
 - Redirect-related auth failure: resolved in the CLI by resolving the canonical REST base URL before authenticated calls.
 - Media discovery endpoint reliability: partially resolved by requesting only the fields needed for discovery.
 - Initial repository publishing: resolved by creating the first commit and pushing it to GitHub.
+- Need for a first attachment-to-content mapping workflow: partially resolved by adding a read-only context report over rendered post/page content.
+- Paged missing-alt discovery returning empty batches despite later matches: resolved by scan-forward filtering across source media pages.
+- Need to inspect builder-managed front-end markup beyond REST-rendered content: partially resolved by adding public-page HTML fetching to `context-report`.
 
 ## Open Questions
-- Target hosting environment: local runner, CI, or server near WordPress?
-- Preferred language/runtime: Python is now the chosen implementation path for the first build.
 - Authentication method available for WordPress: confirmed working via application passwords, with canonical-host resolution required.
-- Is the site classic editor, block editor, Elementor, Divi, or another builder-heavy setup?
-- Should the tool update only missing alt text initially, or also rewrite weak existing alt text?
+- Hosting path after the first local-runner milestone: keep local-only, move to CI, or move closer to WordPress?
 - How should usage context be gathered for Elementor-generated images and other builder-managed assets?
 
 ## Next Actions
-1. Expand discovery beyond attachment listing into attachment-to-content context mapping.
-2. Design a review report format, likely JSONL plus CSV summary.
-3. Define prompt and decision rules for decorative, functional, informative, text-heavy, and complex images.
-4. Add suggestion generation in a read-only mode.
-5. Add explicit approval and apply stages after the review format is stable.
+1. Design a review report format, likely JSONL plus CSV summary, around the new context-report data model.
+2. Define prompt and decision rules for decorative, functional, informative, text-heavy, and complex images.
+3. Add suggestion generation in a read-only mode.
+4. Add explicit approval and apply stages after the review format is stable.
+
+## Tasks
+- [x] Expand context mapping beyond rendered post/page content into builder-heavy or custom-field-driven image usage where REST-rendered HTML is incomplete.
+- [ ] Design a review report format, likely JSONL plus CSV summary, around the new context-report data model.
+- [ ] Define prompt and decision rules for decorative, functional, informative, text-heavy, and complex images.
+- [ ] Add suggestion generation in a read-only mode.
+- [ ] Add explicit approval and apply stages after the review format is stable.
 
 ## Sources
 - WordPress REST API media reference: https://developer.wordpress.org/rest-api/reference/media/
