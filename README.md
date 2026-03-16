@@ -22,6 +22,12 @@ List image attachments:
 wp-alt-text discover --per-page 20
 ```
 
+Scan the full media library instead of a single REST page:
+
+```bash
+wp-alt-text discover --all-pages --per-page 100
+```
+
 List only images missing alt text as JSON:
 
 ```bash
@@ -43,6 +49,14 @@ Export a review-first report as JSONL plus CSV:
 ```bash
 wp-alt-text review-report --missing-alt-only --per-page 20 --output-dir reports/latest
 ```
+
+Build a review queue across the full media library:
+
+```bash
+wp-alt-text review-report --all-pages --per-page 100 --output-dir reports/full-review
+```
+
+Use `--max-media-pages` for bounded smoke runs when you want to validate the workflow without scanning the entire library.
 
 `review-report` writes:
 

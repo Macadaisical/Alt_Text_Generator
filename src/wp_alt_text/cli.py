@@ -63,6 +63,17 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Emit machine-readable JSON output.",
     )
+    discover_parser.add_argument(
+        "--all-pages",
+        action="store_true",
+        help="Scan forward across all media pages instead of fetching only one page.",
+    )
+    discover_parser.add_argument(
+        "--max-media-pages",
+        type=int,
+        default=None,
+        help="Optional cap on media pages scanned when --all-pages is used.",
+    )
 
     context_parser = subparsers.add_parser(
         "context-report",
@@ -111,6 +122,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Emit machine-readable JSON output.",
+    )
+    context_parser.add_argument(
+        "--all-pages",
+        action="store_true",
+        help="Scan forward across all media pages instead of fetching only one page.",
+    )
+    context_parser.add_argument(
+        "--max-media-pages",
+        type=int,
+        default=None,
+        help="Optional cap on media pages scanned when --all-pages is used.",
     )
 
     review_parser = subparsers.add_parser(
@@ -161,6 +183,17 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("reports/latest"),
         help="Directory where review-report.jsonl and review-report.csv will be written.",
+    )
+    review_parser.add_argument(
+        "--all-pages",
+        action="store_true",
+        help="Scan forward across all media pages instead of fetching only one page.",
+    )
+    review_parser.add_argument(
+        "--max-media-pages",
+        type=int,
+        default=None,
+        help="Optional cap on media pages scanned when --all-pages is used.",
     )
 
     prompt_parser = subparsers.add_parser(
@@ -492,11 +525,19 @@ def main() -> int:
             return 0
 
         if args.command == "discover":
-            records, meta = client.list_media(
-                page=args.page,
-                per_page=args.per_page,
-                missing_alt_only=args.missing_alt_only,
-            )
+            if args.all_pages:
+                records, meta = client.collect_media(
+                    page=args.page,
+                    per_page=args.per_page,
+                    max_pages=args.max_media_pages,
+                    missing_alt_only=args.missing_alt_only,
+                )
+            else:
+                records, meta = client.list_media(
+                    page=args.page,
+                    per_page=args.per_page,
+                    missing_alt_only=args.missing_alt_only,
+                )
             if args.json:
                 print(
                     json.dumps(
@@ -510,17 +551,32 @@ def main() -> int:
                 return 0
 
             print(f"Site: {settings.wp_site_url}")
-            summary = (
-                "Fetched "
-                f"{len(records)} image attachment(s) "
-                f"(page {meta['page']} of {meta['total_pages'] or '?'}, "
-                f"reported total {meta['total'] or '?'})"
-            )
-            if args.missing_alt_only:
-                pages_scanned = meta.get("source_pages_scanned", [meta["page"]])
-                summary += (
-                    f" after scanning source page(s) {', '.join(str(page) for page in pages_scanned)}"
+            if args.all_pages:
+                pages_scanned = meta.get("pages_scanned", [meta["page"]])
+                summary = (
+                    "Fetched "
+                    f"{len(records)} image attachment(s) "
+                    f"across media page(s) {', '.join(str(page) for page in pages_scanned)} "
+                    f"(reported total {meta['total'] or '?'})"
                 )
+                if args.missing_alt_only:
+                    summary += (
+                        f" after examining {meta.get('source_records_examined', len(records))} "
+                        "source record(s)"
+                    )
+            else:
+                summary = (
+                    "Fetched "
+                    f"{len(records)} image attachment(s) "
+                    f"(page {meta['page']} of {meta['total_pages'] or '?'}, "
+                    f"reported total {meta['total'] or '?'})"
+                )
+                if args.missing_alt_only:
+                    pages_scanned = meta.get("source_pages_scanned", [meta["page"]])
+                    summary += (
+                        " after scanning source page(s) "
+                        f"{', '.join(str(page) for page in pages_scanned)}"
+                    )
             print(summary)
             for record in records:
                 alt_state = "missing alt" if not record.alt_text else "has alt"
@@ -533,11 +589,19 @@ def main() -> int:
             return 0
 
         if args.command == "context-report":
-            media_records, media_meta = client.list_media(
-                page=args.page,
-                per_page=args.per_page,
-                missing_alt_only=args.missing_alt_only,
-            )
+            if args.all_pages:
+                media_records, media_meta = client.collect_media(
+                    page=args.page,
+                    per_page=args.per_page,
+                    max_pages=args.max_media_pages,
+                    missing_alt_only=args.missing_alt_only,
+                )
+            else:
+                media_records, media_meta = client.list_media(
+                    page=args.page,
+                    per_page=args.per_page,
+                    missing_alt_only=args.missing_alt_only,
+                )
             content_records, content_meta = client.collect_content(
                 endpoints=tuple(args.content_types),
                 per_page=args.content_per_page,
@@ -577,7 +641,13 @@ def main() -> int:
                 f" Public HTML fetched for {content_meta['public_html_fetched']} item(s)"
                 f" with {content_meta['public_html_failed']} fetch failure(s)."
             )
-            if args.missing_alt_only:
+            if args.all_pages:
+                pages_scanned = media_meta.get("pages_scanned", [media_meta["page"]])
+                summary += (
+                    " Media page(s): "
+                    f"{', '.join(str(page) for page in pages_scanned)}."
+                )
+            elif args.missing_alt_only:
                 pages_scanned = media_meta.get("source_pages_scanned", [media_meta["page"]])
                 summary += (
                     f" Media source page(s): {', '.join(str(page) for page in pages_scanned)}."
@@ -602,11 +672,19 @@ def main() -> int:
             return 0
 
         if args.command == "review-report":
-            media_records, media_meta = client.list_media(
-                page=args.page,
-                per_page=args.per_page,
-                missing_alt_only=args.missing_alt_only,
-            )
+            if args.all_pages:
+                media_records, media_meta = client.collect_media(
+                    page=args.page,
+                    per_page=args.per_page,
+                    max_pages=args.max_media_pages,
+                    missing_alt_only=args.missing_alt_only,
+                )
+            else:
+                media_records, media_meta = client.list_media(
+                    page=args.page,
+                    per_page=args.per_page,
+                    missing_alt_only=args.missing_alt_only,
+                )
             content_records, content_meta = client.collect_content(
                 endpoints=tuple(args.content_types),
                 per_page=args.content_per_page,
@@ -639,7 +717,13 @@ def main() -> int:
                 f"Public HTML fetched for {content_meta['public_html_fetched']} item(s)"
                 f" with {content_meta['public_html_failed']} fetch failure(s)."
             )
-            if args.missing_alt_only:
+            if args.all_pages:
+                pages_scanned = media_meta.get("pages_scanned", [media_meta["page"]])
+                print(
+                    "Media page(s): "
+                    f"{', '.join(str(page) for page in pages_scanned)}."
+                )
+            elif args.missing_alt_only:
                 pages_scanned = media_meta.get("source_pages_scanned", [media_meta["page"]])
                 print(
                     "Media source page(s): "

@@ -27,11 +27,16 @@
 - The CLI now also supports `wp-alt-text apply --auto-apply-high-confidence`, which auto-approves only narrow eligible suggestions into the normal review/apply audit trail and still defaults to dry-run.
 - The CLI now also includes `wp-alt-text review-html`, which renders exported `review-report.jsonl` artifacts into a local static HTML review app for browser-based review and JSONL export.
 - The CLI now also includes `wp-alt-text review-import`, which validates a browser-exported reviewed JSONL file and rewrites it into a managed JSONL + CSV artifact directory for later apply steps.
+- The browser review app now defaults pending generated suggestions to `approve` and supports a bulk `Approve Visible` action, which is important for large review batches where most suggestions will be accepted as-is.
+- The browser review app export path now has three layers: native save picker when available, blob download fallback, and a copyable JSONL fallback panel for browsers or preview environments that intercept downloads instead of saving files.
+- The CLI discovery/report surface now also supports exhaustive media pagination via `--all-pages` and optional `--max-media-pages`, which is required for whole-library review exports instead of one media page at a time.
+- A full reviewed live apply run has now been attempted; the resulting artifact shows 48 verified applies, 126 verification errors, and 1 not-attempted record, so large-batch live write reliability remains unresolved.
 - The first production-safe mode should be `dry-run` by default.
 - Human review must remain part of the workflow because alt text correctness depends on context and image role.
 - The initial targeting scope now includes both missing alt text and weak existing alt text.
 - The target site uses Elementor.
 - Until a better deployment need emerges, the default operating assumption is a local runner rather than CI or a server-side deployment.
+- The current `status.md` task list in this worktree is fully checked off, so future sessions should not assume there is an already-selected implementation task to resume.
 
 ## Product Intent
 - Scan a WordPress site for image attachments and likely front-end usage.
@@ -53,6 +58,7 @@
 - `.env` already contains `WP_SITE_URL`, `WP_USERNAME`, `WP_APP_PASSWORD`, and FTP credentials.
 - `assets/upload_via_ftp.py` already uses `python-dotenv` and a repo-root `.env`, which should be mirrored by the alt-text tool for consistency.
 - GitHub remote `origin` points to `https://github.com/Macadaisical/Alt_Text_Generator.git`, and the local branch now tracks `origin/main`.
+- A separate git worktree now exists at `/Users/tjjaglinski/Desktop/Apps/Alt_Text_Generator_next` on branch `feature/review-ux-next` so new feature work can proceed without disturbing the original checkout.
 - The configured `WP_SITE_URL` uses `www`, but the site canonicalizes to the non-`www` host. Authenticated REST calls must resolve the canonical REST root first or Basic Auth may be lost across the redirect.
 - The media endpoint on this site is safer when discovery requests use `_fields` to limit the response payload to only required fields.
 - `--missing-alt-only` now scans forward across REST media pages until it accumulates the requested number of missing-alt attachments, instead of filtering only the first fetched page.
@@ -109,6 +115,9 @@
 - `wp-alt-text apply --input-report reports/suggested/review-report.jsonl --output-dir reports/live-commit-trial --attachment-ids 10969 10973 --auto-apply-high-confidence --commit` succeeded against the live site, and follow-up reads confirmed the expected alt text values on attachment IDs `10969` and `10973`.
 - `wp-alt-text review-html --input-report reports/suggested/review-report.jsonl --output-path reports/review-ui/review-report.html` succeeds locally and writes a browser-openable review app for the current artifact set.
 - `wp-alt-text review-import --input-report reports/review-ui/review-report-reviewed.jsonl --output-dir reports/reviewed-import-smoke` succeeds locally and rewrites normalized JSONL + CSV reviewed artifacts.
+- `python3 -m unittest discover -s tests -v` now also covers artifact-only CLI paths (`prompt-spec --json`, `review-import`) plus WordPress client canonical REST-root resolution and read-after-write verification retry behavior.
+- `python3 -m unittest discover -s tests -v` now also covers full-library media pagination via `collect_media()` and the `review-report --all-pages` CLI export path.
+- `reports/full-apply-commit/review-report.jsonl` records a full reviewed live apply attempt with 174 reviewed records; current apply results in that artifact are 48 `applied`, 126 `error`, and 1 `not_attempted`.
 
 ## Known Unknowns
 - Builder/theme landscape on the target site.

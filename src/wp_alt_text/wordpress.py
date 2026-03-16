@@ -219,6 +219,58 @@ class WordPressClient:
         }
         return filtered_records[:per_page], meta
 
+    def collect_media(
+        self,
+        *,
+        page: int = 1,
+        per_page: int = 20,
+        max_pages: int | None = None,
+        missing_alt_only: bool = False,
+        media_type: str = "image",
+    ) -> tuple[list[MediaRecord], dict[str, int | None | list[int] | bool]]:
+        records: list[MediaRecord] = []
+        pages_scanned: list[int] = []
+        source_records_examined = 0
+        total: int | None = None
+        total_pages: int | None = None
+
+        next_page = page
+        while True:
+            page_records, page_meta = self._fetch_media_page(
+                page=next_page,
+                per_page=per_page,
+                media_type=media_type,
+            )
+            total = page_meta["total"]
+            total_pages = page_meta["total_pages"]
+            source_records_examined += len(page_records)
+            pages_scanned.append(next_page)
+
+            if missing_alt_only:
+                records.extend(record for record in page_records if not record.alt_text)
+            else:
+                records.extend(page_records)
+
+            reached_limit = max_pages is not None and len(pages_scanned) >= max_pages
+            reached_end = not page_records or (
+                total_pages is not None and next_page >= total_pages
+            )
+            if reached_limit or reached_end:
+                break
+            next_page += 1
+
+        return records, {
+            "total": total,
+            "total_pages": total_pages,
+            "page": page,
+            "per_page": per_page,
+            "filtered": missing_alt_only,
+            "pages_scanned": pages_scanned,
+            "source_records_examined": source_records_examined,
+            "returned_records": len(records),
+            "max_pages": max_pages,
+        }
+
     def _fetch_media_page(
         self,
         *,

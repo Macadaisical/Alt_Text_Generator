@@ -78,7 +78,7 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
     }}
     a {{ color: var(--accent); }}
     .shell {{
-      max-width: 1400px;
+      width: min(90vw, 1680px);
       margin: 0 auto;
       padding: 28px 20px 40px;
     }}
@@ -104,7 +104,7 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
     }}
     .toolbar {{
       display: grid;
-      grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr auto auto;
       gap: 12px;
       background: rgba(255,253,248,0.94);
       position: sticky;
@@ -142,6 +142,9 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
       cursor: pointer;
       font-weight: 600;
     }}
+    .toolbar button.secondary {{
+      background: #49555d;
+    }}
     .summary {{
       display: flex;
       flex-wrap: wrap;
@@ -158,47 +161,60 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
     }}
     .grid {{
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 18px;
+      grid-template-columns: 1fr;
+      gap: 20px;
     }}
     .card {{
       display: grid;
-      grid-template-columns: 140px 1fr;
-      gap: 16px;
+      grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+      align-items: start;
+      gap: 22px;
       background: var(--panel-strong);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 16px;
+      padding: 22px;
     }}
     .thumb {{
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 14px;
+      position: sticky;
+      top: 88px;
     }}
     .thumb img {{
       width: 100%;
-      aspect-ratio: 1 / 1;
-      object-fit: cover;
-      border-radius: 16px;
+      aspect-ratio: 4 / 3;
+      object-fit: contain;
+      border-radius: 18px;
       border: 1px solid var(--line);
       background: #f8f4eb;
+      padding: 10px;
     }}
     .meta {{
       font-size: 0.84rem;
       color: var(--muted);
       word-break: break-word;
+      display: grid;
+      gap: 6px;
+    }}
+    .meta strong {{
+      color: var(--ink);
     }}
     .content h2 {{
-      margin: 0 0 8px;
-      font-size: 1.25rem;
-      line-height: 1.05;
+      margin: 0 0 10px;
+      font-size: clamp(1.45rem, 2vw, 2.05rem);
+      line-height: 1;
+      letter-spacing: -0.03em;
     }}
     .row {{
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 14px;
+    }}
+    .content {{
+      min-width: 0;
     }}
     .tag {{
       display: inline-flex;
@@ -214,8 +230,8 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
     .tag.ok {{ background: var(--ok-soft); color: var(--ok); border-color: #b6d6b6; }}
     .tag.skip {{ background: var(--skip-soft); color: var(--skip); border-color: #cdbde6; }}
     .section {{
-      margin-top: 12px;
-      padding-top: 12px;
+      margin-top: 16px;
+      padding-top: 16px;
       border-top: 1px dashed var(--line);
     }}
     .section h3 {{
@@ -242,8 +258,8 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
     }}
     .review-grid {{
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: 220px minmax(180px, 240px) minmax(0, 1fr);
+      gap: 12px;
       margin-top: 10px;
     }}
     .full {{
@@ -262,11 +278,62 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
       color: var(--muted);
       font-size: 0.92rem;
     }}
+    .export-panel {{
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 253, 248, 0.96);
+      box-shadow: var(--shadow);
+    }}
+    .export-panel[hidden] {{
+      display: none;
+    }}
+    .export-panel-head {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }}
+    .export-panel h3 {{
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.02em;
+    }}
+    .export-panel p {{
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }}
+    .export-actions {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }}
+    .export-actions button {{
+      width: auto;
+      background: var(--accent);
+      color: white;
+      border: 0;
+      cursor: pointer;
+      font-weight: 600;
+    }}
+    .export-output {{
+      min-height: 220px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.84rem;
+      line-height: 1.45;
+      white-space: pre;
+    }}
     @media (max-width: 860px) {{
       .toolbar {{ grid-template-columns: 1fr; }}
       .card {{ grid-template-columns: 1fr; }}
       .review-grid {{ grid-template-columns: 1fr; }}
-      .thumb img {{ max-width: 200px; }}
+      .thumb {{
+        position: static;
+      }}
+      .thumb img {{ max-width: 100%; }}
     }}
   </style>
 </head>
@@ -306,6 +373,10 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
       </div>
       <div>
         <label>&nbsp;</label>
+        <button id="approve-visible-btn" type="button">Approve Visible</button>
+      </div>
+      <div>
+        <label>&nbsp;</label>
         <button id="export-btn" type="button">Export Reviewed JSONL</button>
       </div>
     </section>
@@ -315,6 +386,17 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
     <div class="grid" id="cards"></div>
     <div class="empty" id="empty-state" hidden>No records match the current filters.</div>
     <div class="status-bar" id="status-bar"></div>
+    <section class="export-panel" id="export-panel" hidden>
+      <div class="export-panel-head">
+        <h3>Export Fallback</h3>
+        <div class="export-actions">
+          <button id="copy-export-btn" type="button">Copy JSONL</button>
+          <button id="close-export-btn" class="secondary" type="button">Close</button>
+        </div>
+      </div>
+      <p>If your browser preview will not download files directly, copy this JSONL and save it as <code>review-report-reviewed.jsonl</code>.</p>
+      <textarea id="export-output" class="export-output" spellcheck="false"></textarea>
+    </section>
   </div>
 
   <script id="seed-data" type="application/json">{escaped_data}</script>
@@ -332,13 +414,36 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
     const summaryEl = document.getElementById("summary");
     const statusBarEl = document.getElementById("status-bar");
     const typeFilterEl = document.getElementById("type-filter");
+    const exportPanelEl = document.getElementById("export-panel");
+    const exportOutputEl = document.getElementById("export-output");
 
     init();
 
     function init() {{
+      applyDefaultApprovals();
       hydrateTypeOptions();
       bindToolbar();
       render();
+    }}
+
+    function applyDefaultApprovals() {{
+      for (const record of records) {{
+        const review = record.review || {{}};
+        if ((review.status || "pending") !== "pending") {{
+          continue;
+        }}
+        if ((record.suggestion?.status || "") !== "generated") {{
+          continue;
+        }}
+        record.review = {{
+          status: "reviewed",
+          action: "approve",
+          reviewer: review.reviewer || "",
+          reviewed_at: review.reviewed_at || new Date().toISOString(),
+          notes: review.notes || "",
+          final_alt_text: review.final_alt_text || record.suggestion?.candidate_alt_text || "",
+        }};
+      }}
     }}
 
     function hydrateTypeOptions() {{
@@ -368,7 +473,12 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
         state.manualFilter = event.target.value;
         render();
       }});
+      document.getElementById("approve-visible-btn").addEventListener("click", approveVisible);
       document.getElementById("export-btn").addEventListener("click", exportJsonl);
+      document.getElementById("copy-export-btn").addEventListener("click", copyExportText);
+      document.getElementById("close-export-btn").addEventListener("click", () => {{
+        exportPanelEl.hidden = true;
+      }});
     }}
 
     function filteredRecords() {{
@@ -514,7 +624,7 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
 
     function seedForm(form, record) {{
       const review = record.review || {{}};
-      form.querySelector('[data-field="action"]').value = review.action || "";
+      form.querySelector('[data-field="action"]').value = review.action || defaultActionForRecord(record);
       form.querySelector('[data-field="reviewer"]').value = review.reviewer || "";
       form.querySelector('[data-field="final_alt_text"]').value = review.final_alt_text || record.suggestion?.candidate_alt_text || "";
       form.querySelector('[data-field="notes"]').value = review.notes || "";
@@ -555,6 +665,25 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
       render();
     }}
 
+    function approveVisible() {{
+      const timestamp = new Date().toISOString();
+      for (const record of filteredRecords()) {{
+        if ((record.suggestion?.status || "") !== "generated") {{
+          continue;
+        }}
+        const review = record.review || {{}};
+        record.review = {{
+          status: "reviewed",
+          action: "approve",
+          reviewer: review.reviewer || "",
+          reviewed_at: timestamp,
+          notes: review.notes || "",
+          final_alt_text: review.final_alt_text || record.suggestion?.candidate_alt_text || "",
+        }};
+      }}
+      render();
+    }}
+
     function renderContext(items) {{
       if (!items.length) {{
         return '<span class="meta">No matched context</span>';
@@ -568,20 +697,77 @@ def _build_document(report_records: list[dict[str, Any]]) -> str:
       `).join("");
     }}
 
-    function exportJsonl() {{
-      const lines = records.map((record) => JSON.stringify(record));
-      const blob = new Blob([lines.join("\\n") + "\\n"], {{ type: "application/x-ndjson" }});
+    async function exportJsonl() {{
+      const content = buildExportContent();
+
+      if (window.showSaveFilePicker) {{
+        try {{
+          const handle = await window.showSaveFilePicker({{
+            suggestedName: "review-report-reviewed.jsonl",
+            types: [{{
+              description: "JSON Lines",
+              accept: {{ "application/x-ndjson": [".jsonl"] }},
+            }}],
+          }});
+          const writable = await handle.createWritable();
+          await writable.write(content);
+          await writable.close();
+          statusBarEl.textContent = "Saved reviewed JSONL file.";
+          exportPanelEl.hidden = true;
+          return;
+        }} catch (error) {{
+          if (error && error.name === "AbortError") {{
+            statusBarEl.textContent = "Export canceled.";
+            return;
+          }}
+        }}
+      }}
+
+      const blob = new Blob([content], {{ type: "application/x-ndjson" }});
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = "review-report-reviewed.jsonl";
+      anchor.rel = "noopener";
+      document.body.appendChild(anchor);
       anchor.click();
+      anchor.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      showExportFallback(content);
+      statusBarEl.textContent = "Attempted file download. If your browser opened a blob URL instead, use the fallback panel below.";
+    }}
+
+    function buildExportContent() {{
+      return records.map((record) => JSON.stringify(record)).join("\\n") + "\\n";
+    }}
+
+    function showExportFallback(content) {{
+      exportOutputEl.value = content;
+      exportPanelEl.hidden = false;
+      exportOutputEl.focus();
+      exportOutputEl.select();
+    }}
+
+    async function copyExportText() {{
+      const content = exportOutputEl.value || buildExportContent();
+      try {{
+        await navigator.clipboard.writeText(content);
+        statusBarEl.textContent = "Copied reviewed JSONL to clipboard.";
+      }} catch (_error) {{
+        exportOutputEl.focus();
+        exportOutputEl.select();
+        statusBarEl.textContent = "Clipboard copy was blocked. The JSONL is selected for manual copy.";
+      }}
     }}
 
     function tagHtml(text, cls) {{
       const className = cls ? `tag ${{cls}}` : "tag";
       return `<span class="${{className}}">${{escapeHtml(text)}}</span>`;
+    }}
+
+    function defaultActionForRecord(record) {{
+      return (record.suggestion?.status || "") === "generated" ? "approve" : "";
     }}
 
     function escapeHtml(value) {{

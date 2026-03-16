@@ -15,7 +15,7 @@
 ## Current Status
 - Phase: Discovery, review export, suggestion generation, review UX, apply, and verification hardening
 - Status: In progress
-- Last updated: 2026-03-13
+- Last updated: 2026-03-16
 
 ## Research Summary
 - WordPress exposes media records through the REST API at `/wp/v2/media`, including the `alt_text` field, and supports updating media items through the same endpoint.
@@ -152,6 +152,15 @@
 - 2026-03-13: Added a local HTML review surface. Result: new `review-html` command generates a static browser-based review app from `review-report.jsonl` artifacts, allowing reviewers to inspect images/context, filter records, edit decisions inline, and export reviewed JSONL without using raw CLI commands for each record.
 - 2026-03-13: Closed the browser review round-trip. Result: new `review-import` command validates browser-exported reviewed JSONL files and rewrites them into managed JSONL + CSV artifacts for the apply stage.
 - 2026-03-13: Investigated false apply failures after a live commit batch. Result: the site had accepted all 11 requested alt-text updates, but immediate verification reads were stale; the WordPress client now retries read-after-write verification before marking an apply as failed.
+- 2026-03-13: Created a separate git worktree for follow-on changes. Result: new branch `feature/review-ux-next` is checked out at `/Users/tjjaglinski/Desktop/Apps/Alt_Text_Generator_next`, leaving the current working tree unchanged for continuity and comparison.
+- 2026-03-13: Expanded automated coverage into CLI and WordPress client behavior. Result: `python3 -m unittest discover -s tests -v` now also covers `prompt-spec --json`, `review-import`, canonical REST-root resolution, read-after-write retry success, and retry exhaustion failure paths.
+- 2026-03-16: Reviewed session continuity files and current task state. Result: `status.md` currently has no unchecked tasks in this worktree, so no new implementation task was started in this session.
+- 2026-03-16: Added full-library media scan support for review exports. Result: `discover`, `context-report`, and `review-report` now support `--all-pages` plus `--max-media-pages`, and the review workflow can now generate a complete JSONL/CSV queue across paginated media results instead of only a single media page.
+- 2026-03-16: Expanded test coverage for exhaustive media scanning. Result: `python3 -m unittest discover -s tests -v` now passes with 11 tests, including `collect_media()` pagination coverage and a CLI integration test for `review-report --all-pages`.
+- 2026-03-16: Attempted live validation of the full-site review export path. Result: unbounded and loosely bounded live `review-report --all-pages` runs remained too slow to complete interactively because content scanning still walks the site corpus; feature validation for this session therefore relied on automated tests plus bounded command design rather than a completed full live run.
+- 2026-03-16: Improved the browser review workflow for high-volume approval. Result: `review-html` now renders one wide record per row, defaults pending generated suggestions to `Approve`, and adds an `Approve Visible` bulk action so reviewers can bulk-accept filtered records before export.
+- 2026-03-16: Hardened browser export behavior for reviewed artifacts. Result: `review-html` now tries native file save when supported, falls back to normal blob download, and exposes a copyable JSONL export panel when browser previews intercept downloads instead of saving a `.jsonl` file.
+- 2026-03-16: Ran a full reviewed apply commit against the live site. Result: `reports/full-apply-commit/review-report.jsonl` shows 174 reviewed records, with 48 verified `applied`, 126 `error`, and 1 `not_attempted`; the dominant failure pattern was read-after-write verification confirming an empty `alt_text` instead of the requested value.
 
 ## Resolved Issues
 - Need for persistent session continuity files: resolved by creating `status.md` and `memory.md`.
@@ -174,16 +183,23 @@
 - Need for stronger confidence in live write-back correctness: resolved by adding local tests for review/apply policy behavior and a read-after-write verification step in the WordPress client.
 - Need for a more usable local review experience than raw JSONL/CLI edits: resolved by adding `review-html` as a static browser-based reviewer over exported artifacts.
 - Need to bring browser-reviewed artifacts back into the managed workflow cleanly: resolved by adding `review-import` to validate and normalize browser-exported reviewed JSONL files.
+- Need broader automated coverage beyond review/apply policy-only tests: partially resolved by adding CLI integration coverage for artifact-only commands and WordPress client tests for canonical-host and verification-retry behavior.
+- Need a way to export a review CSV across the full paginated media library instead of one media page at a time: resolved by adding exhaustive `--all-pages` media collection to discovery/report commands.
+- Need a scalable browser review flow for large batches where most records are approvals: resolved by widening the HTML review layout, defaulting generated suggestions to approve, adding `Approve Visible`, and hardening export fallback behavior.
 
 ## Open Questions
 - Authentication method available for WordPress: confirmed working via application passwords, with canonical-host resolution required.
 - Hosting path after the first local-runner milestone: keep local-only, move to CI, or move closer to WordPress?
 - How should usage context be gathered for Elementor-generated images and other builder-managed assets?
 - Should the next milestone focus on a more reviewer-friendly interface, broader automated test coverage, or packaging/deployment polish?
+- How should large live scans be made faster or more resumable, especially given the cost of public HTML fetching across the content corpus?
+- Why did 126 live apply commits verify back as empty `alt_text` during the full reviewed run, despite earlier smaller live commits succeeding?
 
 ## Next Actions
-1. Expand automated test coverage beyond policy logic into CLI integration and WordPress client behavior.
-2. Decide whether the next review UX improvement should focus on in-browser CSV export, richer filtering, or a direct local save path.
+1. Expand automated coverage further into live-client discovery/context-report edge cases and CLI error handling.
+2. Investigate the full-run live apply verification failures recorded in `reports/full-apply-commit/review-report.jsonl`, especially the records that read back with empty `alt_text`.
+3. Improve large-run ergonomics with resumable scans, separate media/content caps, or progress output for long `review-report --all-pages` jobs.
+4. Continue new feature work in `/Users/tjjaglinski/Desktop/Apps/Alt_Text_Generator_next` on branch `feature/review-ux-next` unless there is a reason to return to the original worktree.
 
 ## Tasks
 - [x] Expand context mapping beyond rendered post/page content into builder-heavy or custom-field-driven image usage where REST-rendered HTML is incomplete.
@@ -194,6 +210,7 @@
 - [x] Add an apply stage that writes only reviewer-approved alt text back to WordPress.
 - [x] Keep decorative, functional, text-heavy, and complex suggestions in the manual-review path by default.
 - [x] Add an opt-in `--auto-apply-high-confidence` style path only after the explicit approval/apply workflow is stable.
+- [x] Add a full-library review export path that can scan paginated media results and generate a complete approval CSV.
 
 ## Sources
 - WordPress REST API media reference: https://developer.wordpress.org/rest-api/reference/media/
